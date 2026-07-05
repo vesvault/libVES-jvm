@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+/local.properties
+gradle-app.setting
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+
+# Kotlin
+.kotlin/
+
+# Native build artifacts
+.cxx/
+
+# Prebuilt deps (OpenSSL/libcurl/liboqs static libs per ABI) live outside the
+# repo; src/main/cpp/deps is a symlink or developer-local copy.
+/src/main/cpp/deps
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scratch / developer-local
+/_tmp/

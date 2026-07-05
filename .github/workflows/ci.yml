@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# The full native `assembleRelease` needs static prebuilts for OpenSSL,
+# libcurl, and liboqs (per ABI), which are not public and live outside the
+# repo — that build runs on the build host. CI covers what it can without
+# those: the Java API compiles, and the JNI shim compiles against the
+# libVES.c submodule headers. Both jobs also exercise the submodule fetch
+# over HTTPS, so a broken .gitmodules URL fails here.
+
+jobs:
+  java:
+    name: Java API compiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;27.3.13750724"
+
+      - name: Compile the Java sources
+        run: ./gradlew compileReleaseJavaWithJavac --stacktrace
+
+  jni-shim:
+    name: JNI shim syntax-checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install toolchain + headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc libssl-dev libcurl4-openssl-dev default-jdk-headless
+
+      - name: Syntax-check the JNI shim against libVES.c headers
+        run: |
+          JNI_INC=$(dirname "$(find /usr/lib/jvm -name jni.h | head -1)")
+          echo "Using jni.h from: $JNI_INC"
+          rc=0
+          for f in src/main/cpp/jni_*.c src/main/cpp/tls_root.c; do
+            echo "== $f"
+            gcc -fsyntax-only -Wall \
+              -I libVES.c/lib \
+              -I src/main/cpp/include \
+              -I "$JNI_INC" -I "$JNI_INC/linux" \
+              "$f" || rc=1
+          done
+          exit $rc

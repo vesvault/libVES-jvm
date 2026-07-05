@@ -1,0 +1,3 @@
+[submodule "libVES.c"]
+	path = libVES.c
+	url = https://github.com/vesvault/libVES.c.git
