@@ -1,5 +1,8 @@
 # libVES-jvm
 
+[![CI](https://github.com/vesvault/libVES-jvm/actions/workflows/ci.yml/badge.svg)](https://github.com/vesvault/libVES-jvm/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 Java/Kotlin bindings for [libVES.c](https://github.com/vesvault/libVES.c), the C
 implementation of the VES encrypted key exchange library.
 
