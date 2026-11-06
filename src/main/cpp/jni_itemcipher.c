@@ -144,18 +144,23 @@ Java_com_vesvault_libves_ItemCipher_nativeDecrypt(JNIEnv *env, jclass cls,
     }
     (*env)->GetByteArrayRegion(env, jdata, 0, len, (jbyte *) ct);
 
-    char *pt = NULL;
-    int outlen = libVES_Cipher_decrypt(ci, jfinal == JNI_TRUE, ct, (size_t) len, &pt);
+    /* The buffer is sized and owned here, so that it can be wiped when decryption
+     * fails partway: a failed call returns -1, which says nothing of what the
+     * buffer holds. A NULL destination asks for the size, as libVES_Cipher_proceed
+     * does itself when it allocates. */
+    int cap = libVES_Cipher_decrypt(ci, jfinal == JNI_TRUE, ct, (size_t) len, NULL);
+    char *pt = cap >= 0 ? malloc(cap > 0 ? (size_t) cap : 1) : NULL;
+    int outlen = pt ? libVES_Cipher_decrypt(ci, jfinal == JNI_TRUE, ct, (size_t) len, &pt) : -1;
     free(ct);
 
     if (outlen < 0) {
-        if (pt) { vesjni_wipe(pt, (size_t) outlen); free(pt); }
+        if (pt) { vesjni_wipe(pt, (size_t) cap); free(pt); }
         vesjni_throw(env, LIBVES_E_CRYPTO, "Decryption failed", NULL);
         return NULL;
     }
     jbyteArray result = (*env)->NewByteArray(env, (jsize) outlen);
     if (result) (*env)->SetByteArrayRegion(env, result, 0, (jsize) outlen, (const jbyte *) pt);
-    vesjni_wipe(pt, (size_t) outlen);
+    vesjni_wipe(pt, (size_t) cap);
     free(pt);
     return result;
 }

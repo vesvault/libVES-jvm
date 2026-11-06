@@ -1,0 +1,116 @@
+{
+  "_about": "Everything compiled into the .aar's native libraries that VESvault does not write, pinned. etc/aar-sbom.js writes the release SBOM (libVES-jvm-<version>.cdx.json) from this file, after checking it against the .aar and the prebuilts it was linked from, so a change of prebuilts is a change here. The prebuilts are built by vesmail-android's build-aux/android/build-deps.sh, which checks each source archive against the SHA-256 below (and says how each was verified), and are linked by src/main/cpp/Android.mk. The values below were read from the prebuilts' build directories on 2026-11-05; each source tree there matched its archive file for file.",
+  "abi": "arm64-v8a",
+  "platform": ["libc.so", "libdl.so", "libm.so", "libz.so"],
+  "toolchain": {
+    "ndk": "27.3.13750724",
+    "comment": [
+      "Android (13691557, +pgo, +bolt, +lto, +mlgo, based on r522817d) clang version 18.0.4 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)",
+      "Linker: LLD 18.0.4"
+    ]
+  },
+  "components": [
+    {
+      "name": "libVES.c",
+      "version": "1.38",
+      "commit": "f2879d6b8eae48452a028ae2c61d569704c54fc0",
+      "url": "https://github.com/vesvault/libVES.c",
+      "purl": "pkg:github/vesvault/libVES.c@v1.38",
+      "license": "Apache-2.0",
+      "submodule": "libVES.c",
+      "in": "libVES.so",
+      "marker": "libVES/1.38",
+      "build": "the lib/ sources listed in src/main/cpp/Android.mk, with -DHAVE_LIBOQS -DOPENSSL_API_COMPAT=0x10100000L"
+    },
+    {
+      "name": "openssl",
+      "version": "3.5.9",
+      "commit": "45e844fa2a14ec92d146bd8f5778ac130b6625fb",
+      "url": "https://github.com/openssl/openssl",
+      "source": {
+        "url": "https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz",
+        "sha256": "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a"
+      },
+      "purl": "pkg:github/openssl/openssl@openssl-3.5.9",
+      "cpe": "cpe:2.3:a:openssl:openssl:3.5.9:*:*:*:*:*:*:*",
+      "license": "Apache-2.0",
+      "in": "libVES.so",
+      "marker": "OpenSSL 3.5.9 29 Sep 2026",
+      "header": { "file": "openssl/arm64-v8a/include/openssl/opensslv.h", "define": "OPENSSL_FULL_VERSION_STR", "value": "3.5.9" },
+      "prebuilt": {
+        "openssl/arm64-v8a/lib/libcrypto.a": "362e3ace18d214d5f62f4cc7fe6f91c8445c1ecadecadcd16a1c28a375ce5159",
+        "openssl/arm64-v8a/lib/libssl.a": "e811e478533a23e7e1316379d59b4ff8363e32a33b4187fbfe71df77afcaee60"
+      },
+      "build": "./Configure android-arm64 -D__ANDROID_API__=21 no-shared no-tests no-dso no-docs (CFLAGS -Wall -O3), with assembly: ARMv8 AES, PMULL GHASH and SHA, chosen at run time; libcrypto and libssl, linked whole"
+    },
+    {
+      "name": "curl",
+      "version": "8.23.0",
+      "commit": "3163ec065643ba20709f190111f42c3e1fe95273",
+      "url": "https://github.com/curl/curl",
+      "source": {
+        "url": "https://curl.se/download/curl-8.23.0.tar.gz",
+        "sha256": "e3de77cfa6367083c776a26647fc9f633b538c06c3baa73d931a252ac8f72b49"
+      },
+      "purl": "pkg:github/curl/curl@curl-8_23_0",
+      "cpe": "cpe:2.3:a:haxx:curl:8.23.0:*:*:*:*:*:*:*",
+      "license": "curl",
+      "in": "libVES.so",
+      "dependsOn": ["openssl"],
+      "marker": "libcurl/8.23.0",
+      "header": { "file": "curl/arm64-v8a/include/curl/curlver.h", "define": "LIBCURL_VERSION", "value": "8.23.0" },
+      "prebuilt": {
+        "curl/arm64-v8a/lib/libcurl.a": "dacbae2984f795c7551f602f8bca32520fc5d3fe5ac25ef939082eba5e2f03a4"
+      },
+      "build": "./configure --host=aarch64-linux-android --with-openssl --disable-shared --enable-static --disable-ldap --disable-ldaps --disable-rtsp --disable-dict --disable-telnet --disable-tftp --disable-pop3 --disable-imap --disable-gopher --disable-mqtt --disable-manual --disable-ftp --disable-file --disable-smtp --disable-ipfs --disable-websockets --disable-ntlm --without-ca-bundle --without-ca-path --without-libpsl --without-libidn2 --without-brotli --without-zstd --without-nghttp2 --without-libssh2 --without-zlib (CFLAGS -O2). Protocols: HTTP HTTPS. Features: alt-svc AsynchDNS HSTS HTTPS-proxy IPv6 Largefile SSL threadsafe UnixSockets. No CA bundle or path: the app supplies the roots"
+    },
+    {
+      "name": "liboqs",
+      "version": "0.16.0",
+      "commit": "5a1a854b0dc9f2141bdc771c555ee60c37950183",
+      "url": "https://github.com/open-quantum-safe/liboqs",
+      "source": {
+        "url": "https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.16.0.tar.gz",
+        "sha256": "162d5b510518ee5f285f82fa1f16402a885176e818bf1b1a4c3c91c9a2f01eae"
+      },
+      "purl": "pkg:github/open-quantum-safe/liboqs@0.16.0",
+      "cpe": "cpe:2.3:a:openquantumsafe:liboqs:0.16.0:*:*:*:*:*:*:*",
+      "license": "MIT",
+      "licenseNote": "liboqs is MIT; some modules in its source tree carry their own licenses, in their folders",
+      "in": "libVES.so",
+      "header": { "file": "liboqs/arm64-v8a/include/oqs/oqsconfig.h", "define": "OQS_VERSION_TEXT", "value": "0.16.0" },
+      "prebuilt": {
+        "liboqs/arm64-v8a/lib/liboqs.a": "443f6a887e8c30740153d2c68743cb23e2a1abaaa1d8a92da73f6dd47cf6acd7"
+      },
+      "kems": ["hqc_1", "hqc_3", "hqc_5", "kyber_1024", "kyber_512", "kyber_768", "ml_kem_1024", "ml_kem_512", "ml_kem_768", "ntru_hps2048509", "ntru_hps2048677", "ntru_hps40961229", "ntru_hps4096821", "ntru_hrss1373", "ntru_hrss701", "ntruprime_sntrup761"],
+      "build": "cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DOQS_BUILD_ONLY_LIB=ON -DOQS_USE_OPENSSL=OFF -DOQS_DIST_BUILD=ON (NDK toolchain file, android-21). KEM families as libVES.c's Dockerfile: HQC, Kyber, ML-KEM, NTRU and NTRU Prime on; BIKE, Classic McEliece and FrodoKEM off. Every signature family off"
+    },
+    {
+      "name": "android-ndk",
+      "version": "r27d",
+      "url": "https://developer.android.com/ndk",
+      "purl": "pkg:generic/android-ndk@27.3.13750724",
+      "in": "libVES.so libVESjni.so",
+      "build": "the runtime the NDK links into each library; libc, libm and libdl are the device's",
+      "components": [
+        {
+          "name": "compiler-rt",
+          "version": "ndk-r27d",
+          "url": "https://android.googlesource.com/toolchain/llvm-project/+/d8003a456d14a3deb8054cdaa529ffbf02d9b262/compiler-rt",
+          "purl": "pkg:generic/compiler-rt@ndk-r27d",
+          "license": "Apache-2.0 WITH LLVM-exception",
+          "licenseNote": "LLVM's compiler-rt builtins as built into NDK r27d's clang 18.0.4 (llvm-project d8003a45): outline atomics and CPU feature detection in libVES.so, long double conversions in both"
+        },
+        {
+          "name": "bionic-crt",
+          "version": "ndk-r27d",
+          "url": "https://android.googlesource.com/platform/bionic/+/refs/heads/main/libc/arch-common/bionic/",
+          "purl": "pkg:generic/bionic-crt@ndk-r27d",
+          "license": "BSD-2-Clause",
+          "licenseNote": "crtbegin_so.o and crtend_so.o from the NDK's sysroot: the atexit and dlclose glue every Android shared library carries"
+        }
+      ]
+    }
+  ],
+  "vex": []
+}

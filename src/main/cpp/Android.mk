@@ -82,7 +82,8 @@ LOCAL_SRC_FILES := \
     jni_jvar.c \
     jni_veslocker.c \
     jni_vesflow.c \
-    jni_watch.c
+    jni_watch.c \
+    jni_offlinekey.c
 include $(BUILD_SHARED_LIBRARY)
 
 

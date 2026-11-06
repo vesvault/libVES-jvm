@@ -291,6 +291,30 @@ public class Vault extends VESEventTarget {
         return this;
     }
 
+    /**
+     * Create this Vault's key as a new <b>anonymous</b> vault, as
+     * {@code ves -a //domain/!name/ -n} does. The URI's externalId must start
+     * with {@code !}: such a vault belongs to no user, so creating it needs no
+     * login.
+     *
+     * <p>A vault that exists already is refused ({@link ErrorCode#DENIED}),
+     * never rekeyed or taken over: pick another name.
+     *
+     * <p>Afterwards this Vault holds the new key, unlocked, so
+     * {@link #privateKeyPEM()} and {@link #publicKeyPEM()} work at once. It has
+     * no session token: to create items, open the URI again and
+     * {@link #unlock(byte[])} it with the returned VESkey.
+     *
+     * @return the VESkey libVES generated for the key. The caller owns it:
+     *         keep it encrypted, never log it, wipe it when done.
+     */
+    public @NotNull byte[] createAnonymous() throws VESException {
+        synchronized (ctxLock) {
+            if (nativeHandle == 0) throw new IllegalStateException("Vault is closed");
+            return nativeCreateAnonymous(nativeHandle);
+        }
+    }
+
     public boolean unlocked() {
         synchronized (ctxLock) {
             return nativeHandle != 0 && nativeUnlocked(nativeHandle);
@@ -394,6 +418,26 @@ public class Vault extends VESEventTarget {
         }
     }
 
+    /**
+     * This vault key's private key, PEM, not encrypted: the Vault must be
+     * unlocked. For a copy kept outside VES and used with {@link OfflineKey}
+     * when the VES API cannot be reached. The caller owns the secret: keep it
+     * encrypted at rest, never log it.
+     */
+    public @NotNull String privateKeyPEM() throws VESException {
+        synchronized (ctxLock) {
+            if (nativeHandle == 0) throw new IllegalStateException("Vault is closed");
+            return nativePrivateKeyPEM(nativeHandle, vaultKeyHandle);
+        }
+    }
+
+    /** This vault key's public key, PEM, or null if it is not loaded yet. */
+    public @Nullable String publicKeyPEM() {
+        synchronized (ctxLock) {
+            return nativeHandle == 0 ? null : nativePublicKeyPEM(nativeHandle, vaultKeyHandle);
+        }
+    }
+
     /** The user id of this vault's owner. For a root Vault without an unlocked
      *  vault key, falls back to {@code libVES_me} (requires a session token). */
     public long userId() {
@@ -494,6 +538,8 @@ public class Vault extends VESEventTarget {
     private static native void    nativeFreeVaultKey(long vkHandle);
     private static native long    nativeVaultKeyId(long handle, long vkHandle);
     private static native long    nativeUserId(long handle, long vkHandle);
+    private static native String  nativePrivateKeyPEM(long handle, long vkHandle) throws VESException;
+    private static native String  nativePublicKeyPEM(long handle, long vkHandle);
     private static native void    nativeInitFn(long handle, long fnPtr);
     private static native void    nativeSetSessionToken(long handle, @Nullable String token);
     private static native String  nativeGetSessionToken(long handle);
@@ -502,6 +548,7 @@ public class Vault extends VESEventTarget {
     private static native void    nativeUnlock(long handle, @NotNull byte[] veskey) throws VESException;
     private static native void    nativeSetVESkey(long handle, @NotNull byte[] veskey) throws VESException;
     private static native long    nativeSubVault(long handle, @NotNull String domain, @NotNull String externalId) throws VESException;
+    private static native byte[]  nativeCreateAnonymous(long handle) throws VESException;
     private static native void    nativeSetVESkeyPrimary(long handle, @NotNull byte[] veskey, long lostId, @NotNull String passwd) throws VESException;
     private static native boolean nativeUnlocked(long handle);
     private static native void    nativeLock(long handle);

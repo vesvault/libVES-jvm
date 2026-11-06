@@ -243,6 +243,31 @@ Java_com_vesvault_libves_Vault_nativeVaultKeyId(JNIEnv *env, jclass cls, jlong h
     return (jlong) libVES_VaultKey_getId(vk);
 }
 
+/* The private key as PEM, not encrypted: libVES_VaultKey_getPrivateKey1 gives
+ * it only for an unlocked key. The C copy is wiped before it is freed. */
+JNIEXPORT jstring JNICALL
+Java_com_vesvault_libves_Vault_nativePrivateKeyPEM(JNIEnv *env, jclass cls, jlong h, jlong vkh) {
+    (void) cls;
+    libVES *ves = (libVES *) (intptr_t) h;
+    libVES_VaultKey *vk = vesjni_pick_vk(ves, vkh);
+    if (!vk) { vesjni_throw(env, LIBVES_E_PARAM, "no vault key: unlock the Vault first", NULL); return NULL; }
+    char *pk = libVES_VaultKey_getPrivateKey1(vk);
+    if (!pk) { vesjni_throw_from(env, ves); return NULL; }
+    jstring s = (*env)->NewStringUTF(env, pk);
+    OPENSSL_cleanse(pk, strlen(pk));
+    free(pk);
+    return s;
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_vesvault_libves_Vault_nativePublicKeyPEM(JNIEnv *env, jclass cls, jlong h, jlong vkh) {
+    (void) cls;
+    libVES *ves = (libVES *) (intptr_t) h;
+    libVES_VaultKey *vk = vesjni_pick_vk(ves, vkh);
+    const char *pub = vk ? libVES_VaultKey_getPublicKey(vk) : NULL;
+    return pub ? (*env)->NewStringUTF(env, pub) : NULL;
+}
+
 JNIEXPORT jlong JNICALL
 Java_com_vesvault_libves_Vault_nativeUserId(JNIEnv *env, jclass cls, jlong h, jlong vkh) {
     (void) env; (void) cls;
@@ -703,6 +728,65 @@ Java_com_vesvault_libves_Vault_nativeSetVESkey(JNIEnv *env, jclass cls, jlong h,
      * so a later libVES_lock doesn't walk a dangling pointer. */
     if (ves->unlockedKeys) libVES_List_remove(ves->unlockedKeys, new_vk);
     libVES_VaultKey_free(new_vk);
+}
+
+/* Create this Vault's key as a new ANONYMOUS vault, as `ves -a //domain/!name/ -n`
+ * does: an externalId that starts with '!' belongs to no user, so it needs no
+ * login and has nothing to propagate to (libVES VaultKey.c). The calls are the
+ * CLI's: libVES_createVaultKey, then libVES_VaultKey_post.
+ *
+ * A vault that exists already is refused (LIBVES_E_DENIED), never rekeyed or
+ * taken over: the caller picks another name. Only a 404 counts as "free"; any
+ * other failure of the lookup is thrown as it is.
+ *
+ * Returns the VESkey libVES generated for the key (ves->veskeyLen random
+ * bytes). The caller owns it. The C copy is wiped. On success ves->vaultKey
+ * is the new key, unlocked, so privateKeyPEM()/publicKeyPEM() work at once;
+ * there is no session token yet (a later unlock with the VESkey gets one).
+ *
+ * It is for an app that enrols itself with no user login: it makes its own
+ * vault, //<domain>/!<name>, and keeps the VESkey this returns. */
+JNIEXPORT jbyteArray JNICALL
+Java_com_vesvault_libves_Vault_nativeCreateAnonymous(JNIEnv *env, jclass cls, jlong h) {
+    (void) cls;
+    libVES *ves = (libVES *) (intptr_t) h;
+    if (!ves) { vesjni_throw(env, LIBVES_E_PARAM, "Vault is null", NULL); return NULL; }
+    const char *xid = ves->external ? libVES_Ref_getExternalId(ves->external) : NULL;
+    if (!xid || xid[0] != '!') {
+        vesjni_throw(env, LIBVES_E_PARAM, "createAnonymous: the vault's externalId must start with '!'", xid);
+        return NULL;
+    }
+    if (ves->vaultKey) {
+        vesjni_throw(env, LIBVES_E_DENIED, "createAnonymous: this Vault has a vault key already", xid);
+        return NULL;
+    }
+    libVES_VaultKey *old = libVES_VaultKey_get2(ves->external, ves, NULL, NULL, LIBVES_O_GET);
+    if (old) {
+        libVES_VaultKey_free(old);
+        vesjni_throw(env, LIBVES_E_DENIED, "createAnonymous: the vault exists already", xid);
+        return NULL;
+    }
+    if (!libVES_checkError(ves, LIBVES_E_NOTFOUND)) { vesjni_throw_from(env, ves); return NULL; }
+
+    libVES_VaultKey *vk = libVES_createVaultKey(ves);
+    if (!vk) { vesjni_throw_from(env, ves); return NULL; }
+    libVES_veskey *veskey = libVES_VaultKey_getVESkey(vk);
+    if (!veskey || !libVES_VaultKey_post(vk)) {
+        vesjni_throw_from(env, ves);
+        if (veskey) {
+            vesjni_wipe(veskey->veskey, veskey->keylen);
+            libVES_veskey_free(veskey);
+        }
+        /* Not posted: drop it, so this Vault is as it was. */
+        ves->vaultKey = NULL;
+        (void) libVES_REFDN(VaultKey, vk);
+        return NULL;
+    }
+    jbyteArray res = (*env)->NewByteArray(env, (jsize) veskey->keylen);
+    if (res) (*env)->SetByteArrayRegion(env, res, 0, (jsize) veskey->keylen, (const jbyte *) veskey->veskey);
+    vesjni_wipe(veskey->veskey, veskey->keylen);
+    libVES_veskey_free(veskey);
+    return res;
 }
 
 /* Create or rotate the user's PRIMARY vault key using a temp-password

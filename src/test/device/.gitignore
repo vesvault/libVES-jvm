@@ -1,0 +1,3 @@
+# Throwaway keys and CA files, made by build-apk.sh
+/src/main/assets/
+/local.properties

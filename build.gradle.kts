@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.vesvault"
-version = "0.1.0"
+version = "0.2.0"
 
 android {
     namespace = "com.vesvault.libves"
@@ -36,4 +36,15 @@ android {
 
 dependencies {
     compileOnly("org.jetbrains:annotations:24.1.0")
+}
+
+// The release SBOM, for the .aar assembleRelease makes: etc/aar-sbom.js
+// (needs node) writes it from build-inputs.json. README, "SBOM".
+tasks.register<Exec>("sbom") {
+    group = "build"
+    description = "Writes build/outputs/sbom/libVES-jvm-<version>.cdx.json for the release .aar."
+    dependsOn("assembleRelease")
+    val out = layout.buildDirectory.file("outputs/sbom/libVES-jvm-${project.version}.cdx.json").get().asFile
+    outputs.upToDateWhen { false }
+    commandLine("node", "etc/aar-sbom.js", "--out", out.path)
 }
