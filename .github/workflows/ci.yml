@@ -28,7 +28,11 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - uses: android-actions/setup-android@v3
+      # v4: v3 installs the SDK package `tools` by default, which current
+      # sdkmanager no longer finds ("Failed to find package 'tools'"), and fails.
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       - name: Install SDK packages
         run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;27.3.13750724"
